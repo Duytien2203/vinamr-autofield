@@ -31,12 +31,26 @@ from database.db import init_db, save_upload, get_available_dates, get_upload_da
 init_db()
 
 def bootstrap_sample_data():
-    dates = get_available_dates("0747")
-    if not dates:
-        sample_path = os.path.join(BASE_DIR, "data", "samples", "sample_quota_0747_20261106.xml")
-        if os.path.exists(sample_path):
-            parsed = QuotaParser.parse_xml_spreadsheet(sample_path)
-            save_upload("0747", "2026-11-06", "file quota 06/11", sample_path, parsed)
+    try:
+        # Dự án 0747
+        dates_747 = get_available_dates("0747")
+        if not dates_747:
+            sample_path_747 = os.path.join(BASE_DIR, "data", "samples", "sample_quota_0747_20261106.xml")
+            if os.path.exists(sample_path_747):
+                parsed_747 = QuotaParser.parse_xml_spreadsheet(sample_path_747)
+                save_upload("0747", "2026-11-06", "sample_quota_0747_20261106.xml", sample_path_747, parsed_747)
+
+        # Dự án 0748
+        dates_748 = get_available_dates("0748")
+        if not dates_748:
+            sample_path_748 = os.path.join(BASE_DIR, "data", "samples", "sample_quota_0748_20261106.xls")
+            if not os.path.exists(sample_path_748):
+                sample_path_748 = os.path.join(BASE_DIR, "data", "uploads", "0748", "2026-11-06_[MAIN] - 0748 - FV_2026_06_11_14_02.xls")
+            if os.path.exists(sample_path_748):
+                parsed_748 = QuotaParser.parse_xml_spreadsheet(sample_path_748)
+                save_upload("0748", "2026-11-06", "sample_quota_0748_20261106.xls", sample_path_748, parsed_748)
+    except Exception as e:
+        print("[Bootstrap Warning]:", e)
 
 # 1. Trang chủ SPA
 async def homepage(request: Request):
@@ -134,6 +148,35 @@ async def api_upload(request: Request):
     except Exception as e:
         return JSONResponse({"detail": f"Lỗi đọc file: {str(e)}"}, status_code=400)
 
+def render_no_data_page(project: str, date: str, city: str) -> str:
+    return f"""<!DOCTYPE html>
+    <html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Chưa Có Dữ Liệu Báo Cáo - VINAMR</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4">
+        <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
+            <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">!</div>
+            <h2 class="text-lg font-bold text-white">Chưa Có Dữ Liệu Báo Cáo</h2>
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Dự án <span class="text-sky-400 font-bold">{project}</span> chưa có dữ liệu quota cho ngày <span class="font-mono text-amber-400">{date or "đang chọn"}</span>.
+                Vui lòng tải file quota của ngày này lên hệ thống trước khi in báo cáo.
+            </p>
+            <div class="pt-2 flex justify-center gap-3">
+                <a href="/" class="px-5 py-2 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-xs font-semibold transition">
+                    Về Trang Chủ
+                </a>
+                <button onclick="window.close()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition">
+                    Đóng Tab
+                </button>
+            </div>
+        </div>
+    </body>
+    </html>"""
+
 # 6. API Xuất file Excel
 async def api_export_excel(request: Request):
     project = request.query_params.get("project", "0747")
@@ -141,12 +184,15 @@ async def api_export_excel(request: Request):
     city = request.query_params.get("city", "HCM")
 
     dates = get_available_dates(project)
-    if not date and dates:
-        date = dates[0]
+    if not date or date in ("undefined", "null", ""):
+        date = dates[0] if dates else None
+
+    if not date:
+        return HTMLResponse(render_no_data_page(project, date, city))
 
     record = get_upload_data(project, date)
     if not record:
-        return Response("Dữ liệu không tồn tại", status_code=404)
+        return HTMLResponse(render_no_data_page(project, date, city))
 
     parsed_data = record["parsed_data"]
     analysis = QuotaEngine.analyze(parsed_data, target_city=city)
@@ -166,12 +212,15 @@ async def api_export_html(request: Request):
     city = request.query_params.get("city", "HCM")
 
     dates = get_available_dates(project)
-    if not date and dates:
-        date = dates[0]
+    if not date or date in ("undefined", "null", ""):
+        date = dates[0] if dates else None
+
+    if not date:
+        return HTMLResponse(render_no_data_page(project, date, city))
 
     record = get_upload_data(project, date)
     if not record:
-        return Response("Dữ liệu không tồn tại", status_code=404)
+        return HTMLResponse(render_no_data_page(project, date, city))
 
     parsed_data = record["parsed_data"]
     analysis = QuotaEngine.analyze(parsed_data, target_city=city)

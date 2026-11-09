@@ -87,13 +87,16 @@
                 </button>
 
                 <!-- Nút Xuất Excel -->
-                <a :href="`/api/export/excel?project=${currentProject}&date=${selectedDate}&city=${selectedCity}`" 
+                <a :href="selectedDate ? `/api/export/excel?project=${encodeURIComponent(currentProject)}&date=${encodeURIComponent(selectedDate)}&city=${encodeURIComponent(selectedCity)}` : '#'" 
+                   @click="if(!selectedDate) { alert('Chưa có dữ liệu quota được chọn để xuất file!'); $event.preventDefault(); }"
                    class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition shadow-sm shadow-emerald-600/20">
                     Xuất Excel
                 </a>
 
                 <!-- Nút In Báo Cáo / PDF -->
-                <a :href="`/api/export/html?project=${currentProject}&date=${selectedDate}&city=${selectedCity}`" target="_blank"
+                <a :href="selectedDate ? `/api/export/html?project=${encodeURIComponent(currentProject)}&date=${encodeURIComponent(selectedDate)}&city=${encodeURIComponent(selectedCity)}` : '#'" 
+                   @click="if(!selectedDate) { alert('Chưa có dữ liệu quota được chọn để in báo cáo!'); $event.preventDefault(); }"
+                   target="_blank"
                    class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition">
                     In Báo Cáo
                 </a>
