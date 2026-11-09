@@ -31,7 +31,7 @@ Giao diện được tái thiết kế toàn diện theo phong cách **Executive
 
 ---
 
-## 🚀 Khởi Động Ứng Dụng
+## 🚀 Khởi Động Ứng Dụng Cục Bộ (Local)
 
 ### Cách 1: Click phím tắt (Dành cho Windows)
 * Nhấp đúp chuột vào file: **`run_app.bat`** (hoặc chuột phải vào `run_app.ps1` chọn *Run with PowerShell*).
@@ -42,7 +42,47 @@ Giao diện được tái thiết kế toàn diện theo phong cách **Executive
 ```
 
 Mở trình duyệt truy cập ngay:
-👉 **http://localhost:8000**
+👉 **http://localhost:8000** hoặc **http://127.0.0.1:8000**
+
+---
+
+## ☁️ Hướng Dẫn Đưa Lên Online (GitHub & Cloud Database)
+
+### Bước 1: Đẩy mã nguồn lên GitHub
+1. Mở trình duyệt vào [GitHub New Repo](https://github.com/new).
+2. Đặt tên Repository (ví dụ: `vinamr-autofield`), chọn **Public** hoặc **Private**, và **không** tích chọn "Add a README file".
+3. Nhấn **Create repository**.
+4. Chạy 2 lệnh sau trong terminal để đẩy toàn bộ mã nguồn lên:
+```powershell
+git remote add origin https://github.com/Duytien2203/vinamr-autofield.git
+git push -u origin main
+```
+
+---
+
+### Bước 2: Thiết lập Database Online & Triển khai Web (Miễn phí)
+
+#### Lựa chọn A (Khuyến nghị 1-Click): Triển khai trên Render.com
+1. Đăng nhập [Render.com](https://render.com) bằng tài khoản GitHub của bạn.
+2. Nhấn **New +** $\rightarrow$ chọn **Web Service**.
+3. Chọn repo `vinamr-autofield` vừa đẩy lên.
+4. Cấu hình cơ bản:
+   * **Language / Environment**: `Python 3`
+   * **Region**: `Singapore` (để tốc độ truy cập từ Việt Nam nhanh nhất)
+   * **Build Command**: `pip install -r requirements.txt`
+   * **Start Command**: `uvicorn server:app --host 0.0.0.0 --port $PORT`
+   * **Instance Type**: `Free`
+5. **Cấu hình Database Online**:
+   * **Cách 1 (Lưu ổ đĩa đám mây Persistent Disk)**: Tại mục *Disks*, chọn *Add Disk*: Name `vinamr-data`, Mount Path `/var/data`. Thêm biến môi trường (*Environment Variables*): `DB_PATH = /var/data/quota_system.db`.
+   * **Cách 2 (Cloud PostgreSQL với Supabase / Neon)**: Tạo 1 database miễn phí tại [Neon.tech](https://neon.tech) hoặc [Supabase.com](https://supabase.com). Copy chuỗi kết nối dán vào biến môi trường: `DATABASE_URL = postgresql://...`. Hệ thống sẽ tự động tạo bảng và lưu trữ trên PostgreSQL.
+6. Nhấn **Deploy Web Service**. Sau 1 - 2 phút, bạn sẽ nhận được một đường link web công khai dạng:
+   👉 **`https://vinamr-autofield.onrender.com`**
+
+#### Lựa chọn B: Triển khai trên Railway.app
+1. Đăng nhập [Railway.app](https://railway.app) bằng GitHub.
+2. Chọn **Deploy from GitHub repo** $\rightarrow$ chọn `vinamr-autofield`.
+3. Bấm **+ New** $\rightarrow$ **Database** $\rightarrow$ **Add PostgreSQL**.
+4. Railway sẽ tự động kết nối biến `DATABASE_URL` sang Web Service. Mọi upload quota sẽ được tự động đồng bộ vào Cloud Database.
 
 ---
 
