@@ -11,7 +11,11 @@ import sqlite3
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "quota_system.db"))
+if os.environ.get("VERCEL"):
+    _default_db = "/tmp/quota_system.db"
+else:
+    _default_db = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "quota_system.db")
+DB_PATH = os.environ.get("DB_PATH", _default_db)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # Chuẩn hóa tiền tố DATABASE_URL từ postgres:// thành postgresql:// nếu có

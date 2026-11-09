@@ -111,7 +111,10 @@ async def api_upload(request: Request):
     if not date_str or date_str == "auto":
         date_str = auto_date
 
-    save_dir = os.path.join(BASE_DIR, "data", "uploads", project)
+    if os.environ.get("VERCEL"):
+        save_dir = os.path.join("/tmp", "uploads", project)
+    else:
+        save_dir = os.path.join(BASE_DIR, "data", "uploads", project)
     os.makedirs(save_dir, exist_ok=True)
     saved_path = os.path.join(save_dir, f"{date_str}_{filename}")
     
