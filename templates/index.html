@@ -122,15 +122,20 @@
             </div>
 
             <!-- Date Selector & History -->
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1">
-                    <span class="text-slate-400">Ngày dữ liệu:</span>
-                    <select x-model="selectedDate" @change="loadQuotaData()" class="bg-transparent text-white font-mono font-medium focus:outline-none cursor-pointer">
-                        <template x-for="d in availableDates" :key="d">
-                            <option :value="d" class="bg-slate-900 text-white" x-text="d"></option>
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 shadow-sm">
+                    <span class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Ngày quota:
+                    </span>
+                    <select x-model="selectedDate" @change="loadQuotaData()" class="bg-transparent text-white font-mono text-xs font-semibold focus:outline-none cursor-pointer">
+                        <template x-for="(d, idx) in availableDates" :key="d">
+                            <option :value="d" class="bg-slate-900 text-white py-1" x-text="formatDateOption(d, idx)"></option>
                         </template>
                     </select>
                 </div>
+                <span class="hidden sm:inline-flex px-2 py-1 text-[10px] font-medium bg-slate-900/90 text-slate-400 border border-slate-800 rounded-lg"
+                      x-text="`Lịch sử: ${availableDates.length} ngày`"></span>
             </div>
 
         </div>
@@ -611,6 +616,16 @@
                 async switchCity(city) {
                     this.selectedCity = city;
                     await this.loadQuotaData();
+                },
+
+                formatDateOption(dateStr, idx) {
+                    if (!dateStr) return '';
+                    const parts = dateStr.split('-');
+                    if (parts.length === 3) {
+                        const vnDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                        return (idx === 0) ? `${vnDate} (Mới nhất)` : vnDate;
+                    }
+                    return dateStr;
                 },
 
                 async loadDates() {
