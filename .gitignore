@@ -10,6 +10,11 @@ venv/
 ENV/
 .env
 
+# Firebase & Cloud Credentials
+*firebase*.json
+serviceAccountKey.json
+*.credentials.json
+
 # Database journal & locks (do not push runtime locks, keep quota_system.db if needed or let DB init automatically)
 *.db-journal
 *.db-wal
