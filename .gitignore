@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+env/
+venv/
+ENV/
+.env
+
+# Database journal & locks (do not push runtime locks, keep quota_system.db if needed or let DB init automatically)
+*.db-journal
+*.db-wal
+*.db-shm
+
+# OS & Editor generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
