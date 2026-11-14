@@ -137,6 +137,7 @@ def init_db():
             total_achieved INTEGER DEFAULT 0,
             total_target INTEGER DEFAULT 0,
             parsed_json TEXT,
+            raw_file_base64 TEXT,
             UNIQUE(project_code, quota_date),
             FOREIGN KEY(project_code) REFERENCES projects(code)
         );
@@ -167,15 +168,22 @@ def init_db():
             total_achieved INTEGER DEFAULT 0,
             total_target INTEGER DEFAULT 0,
             parsed_json TEXT,
+            raw_file_base64 TEXT,
             UNIQUE(project_code, quota_date),
             FOREIGN KEY(project_code) REFERENCES projects(code)
         );
         """)
+
+    try:
+        cursor.execute("ALTER TABLE quota_uploads ADD COLUMN raw_file_base64 TEXT;")
+    except Exception:
+        pass
     
     conn.commit()
     conn.close()
 
-def save_upload(project_code: str, quota_date: str, file_name: str, file_path: str, parsed_data: Dict[str, Any]) -> int:
+def save_upload(project_code: str, quota_date: str, file_name: str, file_path: str, parsed_data: Dict[str, Any], raw_bytes: bytes = None) -> int:
+    import base64
     total_achieved = 0
     total_target = 0
     for r in parsed_data.get("rows", []):
@@ -185,6 +193,16 @@ def save_upload(project_code: str, quota_date: str, file_name: str, file_path: s
             
     parsed_json = json.dumps(parsed_data, ensure_ascii=False)
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    raw_file_base64 = ""
+    if raw_bytes:
+        raw_file_base64 = base64.b64encode(raw_bytes).decode("ascii")
+    elif file_path and os.path.exists(file_path):
+        try:
+            with open(file_path, "rb") as f:
+                raw_file_base64 = base64.b64encode(f.read()).decode("ascii")
+        except Exception:
+            pass
 
     # A. Lưu vào Firebase Firestore
     if is_firebase():
@@ -199,7 +217,8 @@ def save_upload(project_code: str, quota_date: str, file_name: str, file_path: s
             "total_achieved": total_achieved,
             "total_target": total_target,
             "parsed_json": parsed_json,
-        })
+            "raw_file_base64": raw_file_base64,
+        }, merge=True)
         return 1
 
     # B. Lưu vào PostgreSQL / SQLite
@@ -207,18 +226,19 @@ def save_upload(project_code: str, quota_date: str, file_name: str, file_path: s
     cursor = conn.cursor()
     ph = "%s" if is_postgres() else "?"
     query = f"""
-    INSERT INTO quota_uploads (project_code, quota_date, file_name, file_path, uploaded_at, total_achieved, total_target, parsed_json)
-    VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
+    INSERT INTO quota_uploads (project_code, quota_date, file_name, file_path, uploaded_at, total_achieved, total_target, parsed_json, raw_file_base64)
+    VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})
     ON CONFLICT(project_code, quota_date) DO UPDATE SET
         file_name = excluded.file_name,
         file_path = excluded.file_path,
         uploaded_at = excluded.uploaded_at,
         total_achieved = excluded.total_achieved,
         total_target = excluded.total_target,
-        parsed_json = excluded.parsed_json;
+        parsed_json = excluded.parsed_json,
+        raw_file_base64 = excluded.raw_file_base64;
     """
     
-    cursor.execute(query, (project_code, quota_date, file_name, file_path, now_str, total_achieved, total_target, parsed_json))
+    cursor.execute(query, (project_code, quota_date, file_name, file_path, now_str, total_achieved, total_target, parsed_json, raw_file_base64))
     upload_id = getattr(cursor, "lastrowid", 1)
     conn.commit()
     conn.close()
@@ -271,7 +291,8 @@ def get_upload_data(project_code: str, quota_date: str) -> Optional[Dict[str, An
                 "uploaded_at": data.get("uploaded_at", ""),
                 "total_achieved": data.get("total_achieved", 0),
                 "total_target": data.get("total_target", 0),
-                "parsed_data": json.loads(data["parsed_json"])
+                "parsed_data": json.loads(data["parsed_json"]),
+                "raw_file_base64": data.get("raw_file_base64", "")
             }
         return None
 
@@ -306,7 +327,8 @@ def get_upload_data(project_code: str, quota_date: str) -> Optional[Dict[str, An
             "uploaded_at": data_dict["uploaded_at"],
             "total_achieved": data_dict["total_achieved"],
             "total_target": data_dict["total_target"],
-            "parsed_data": json.loads(data_dict["parsed_json"])
+            "parsed_data": json.loads(data_dict["parsed_json"]),
+            "raw_file_base64": data_dict.get("raw_file_base64", "")
         }
     return None
 

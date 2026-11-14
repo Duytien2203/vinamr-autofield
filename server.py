@@ -38,7 +38,9 @@ def bootstrap_sample_data():
             sample_path_747 = os.path.join(BASE_DIR, "data", "samples", "sample_quota_0747_20261106.xml")
             if os.path.exists(sample_path_747):
                 parsed_747 = QuotaParser.parse_xml_spreadsheet(sample_path_747)
-                save_upload("0747", "2026-11-06", "sample_quota_0747_20261106.xml", sample_path_747, parsed_747)
+                with open(sample_path_747, "rb") as f:
+                    raw_747 = f.read()
+                save_upload("0747", "2026-11-06", "sample_quota_0747_20261106.xml", sample_path_747, parsed_747, raw_bytes=raw_747)
 
         # Dự án 0748
         dates_748 = get_available_dates("0748")
@@ -48,7 +50,9 @@ def bootstrap_sample_data():
                 sample_path_748 = os.path.join(BASE_DIR, "data", "uploads", "0748", "2026-11-06_[MAIN] - 0748 - FV_2026_06_11_14_02.xls")
             if os.path.exists(sample_path_748):
                 parsed_748 = QuotaParser.parse_xml_spreadsheet(sample_path_748)
-                save_upload("0748", "2026-11-06", "sample_quota_0748_20261106.xls", sample_path_748, parsed_748)
+                with open(sample_path_748, "rb") as f:
+                    raw_748 = f.read()
+                save_upload("0748", "2026-11-06", "sample_quota_0748_20261106.xls", sample_path_748, parsed_748, raw_bytes=raw_748)
     except Exception as e:
         print("[Bootstrap Warning]:", e)
 
@@ -137,7 +141,7 @@ async def api_upload(request: Request):
 
     try:
         parsed = QuotaParser.parse_xml_spreadsheet(saved_path)
-        save_upload(project, date_str, filename, saved_path, parsed)
+        save_upload(project, date_str, filename, saved_path, parsed, raw_bytes=content)
         return JSONResponse({
             "status": "success", 
             "project": project,
@@ -228,6 +232,58 @@ async def api_export_html(request: Request):
 
     return HTMLResponse(html_content)
 
+# 8. API Tải file Excel/XML gốc do sếp tải lên
+async def api_download_original(request: Request):
+    project = request.query_params.get("project", "0747")
+    date = request.query_params.get("date")
+
+    dates = get_available_dates(project)
+    if not date or date in ("undefined", "null", ""):
+        date = dates[0] if dates else None
+
+    if not date:
+        return Response("Chưa có dữ liệu cho ngày này", status_code=404)
+
+    record = get_upload_data(project, date)
+    if not record:
+        return Response("Không tìm thấy dữ liệu", status_code=404)
+
+    filename = record.get("file_name", f"quota_{project}_{date}.xls")
+    raw_b64 = record.get("raw_file_base64")
+    raw_bytes = None
+
+    if raw_b64:
+        import base64
+        try:
+            raw_bytes = base64.b64decode(raw_b64)
+        except Exception:
+            pass
+
+    if not raw_bytes:
+        file_path = record.get("file_path")
+        if file_path and os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                raw_bytes = f.read()
+
+    if not raw_bytes:
+        parsed_data = record["parsed_data"]
+        analysis = QuotaEngine.analyze(parsed_data, target_city="HCM")
+        raw_bytes = QuotaReporter.generate_excel(analysis, project, date)
+        if not filename.endswith(".xlsx"):
+            filename = f"Bao_Cao_{project}_{date}.xlsx"
+
+    media_type = "application/vnd.ms-excel"
+    if filename.endswith(".xlsx"):
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    elif filename.endswith(".xml"):
+        media_type = "application/xml"
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Type": media_type
+    }
+    return Response(raw_bytes, media_type=media_type, headers=headers)
+
 routes = [
     Route("/", homepage),
     Route("/api/projects", api_projects),
@@ -236,6 +292,7 @@ routes = [
     Route("/api/upload", api_upload, methods=["POST"]),
     Route("/api/export/excel", api_export_excel),
     Route("/api/export/html", api_export_html),
+    Route("/api/download/original", api_download_original),
     Mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static"),
 ]
 
